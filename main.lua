@@ -1,4 +1,5 @@
 local System = require "lib.knife.system"
+local Vec = require "vector"
 
 local Entity = {
    eid = 1,
@@ -9,17 +10,14 @@ local Entity = {
    end
 }
 
--- Vectors
+-- Collision Detection
 
-local Vec = {}
+local collisions = {}
 
-function Vec.sub(a, b)
-   return { x = a.x - b.x,
-            y = a.y - b.y }
-end
+local Hit = {}
 
-function Vec.mag(vec)
-   return math.abs(math.sqrt(vec.x * vec.x + vec.y * vec.y))
+function Hit.new(entity)
+   return { collider = entity }
 end
 
 -- Systems
@@ -54,9 +52,9 @@ local updateVelocity = System(
    function (v, speed, p, state, target)
       if state.current == "following" then
          local v_new = Vec.sub (target, p)
-         local mag = Vec.mag(v_new)
-         v.x = (v_new.x / mag) * speed
-         v.y = (v_new.y / mag) * speed
+         local unit = Vec.unit (v_new)
+         v.x = unit.x * speed
+         v.y = unit.y * speed
       elseif state.current == "attacking" then
          v.x = -v.x
          v.y = -v.y
@@ -82,13 +80,24 @@ local drawEntity = System(
    end
 )
 
+local updatePlayerState = System(
+   { "state", "position", "-player" },
+   function (state, p, dt)
+      if state.current == "invulnerable" then
+         if state.cooldown <= 0 then
+            state.current = "normal"
+         else
+            state.cooldown = state.cooldown - dt
+         end
+      end
+   end
+)
+
 local updateState = System(
    { "state", "position", "!player" },
    function (state, p, target)
       local distance = Vec.mag( Vec.sub (target, p) )
-      print(distance)
       if distance < 30 then
-         print "attacking"
          state.current = "attacking"
       else
          state.current = "following"
@@ -96,11 +105,38 @@ local updateState = System(
    end
 )
 
+local checkCollisions = System(
+   { "position", "size", "!player" },
+   function (p, s, target)
+      local leftOf  = p.x + s.width < target.position.x
+      local rightOf = p.x > target.position.x + target.size.width
+      local above   = p.y + s.height < target.position.y
+      local below   = p.y > target.position.y + target.size.height
+      -- print (leftOf, rightOf, above, below)
+      if not (leftOf or rightOf or above or below) then
+         collisions[#collisions + 1] = Hit.new(entity)
+         -- print("collision")
+      end
+         
+   end
+)
+
+function handleCollisions(player)
+   for i, v in ipairs(collisions) do
+      if player.state.current == "normal" then
+         print("Collision detected")
+         player.state.current = "invulnerable"
+         player.state.cooldown = 2
+      end
+      collisions[i] = nil
+   end
+end
+
 function newEnemy(x, y, speed)
    local enemy = {
       position = { x = x, y = y },
-      size = { width = 35, height = 40 },
       velocity = { x = -20, y = 30 },
+      size = { width = 35, height = 40 },
       color = { r = 255, g = 0, b = 200, a = 255 },
       speed = speed or math.random(20,100),
       state = { current = "following" }
@@ -114,10 +150,11 @@ function love.load()
    local player = {
       player = true,
       position = { x = 20, y = 30 },
-      size = { width = 35, height = 40 },
       velocity = { x = 150, y = 150 },
+      size = { width = 35, height = 40 },
       color = { r = 255, g = 255, b = 0, a = 255 },
-      speed = 100
+      speed = 100,
+      state = { current = "normal", cooldown = 0 }
    }
    Entity:add(player)
    Entity:add(newEnemy(500, 300, 60))
@@ -131,10 +168,13 @@ function love.update(dt)
       love.event.quit()
    end
    for _, entity in pairs(Entity.entities) do
-      updateState(entity, Entity.entities[1].position)
-      updatePlayerVelocity(entity)
-      updateVelocity(entity, Entity.entities[1].position)
-      updatePosition(entity, dt)
+      updateState (entity, Entity.entities[1].position)
+      updatePlayerState (entity, dt)
+      updatePlayerVelocity (entity)
+      updateVelocity (entity, Entity.entities[1].position)
+      updatePosition (entity, dt)
+      checkCollisions (entity, Entity.entities[1])
+      handleCollisions (Entity.entities[1])
    end
 end
 
