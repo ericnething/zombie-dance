@@ -127,6 +127,7 @@ function handleCollisions(player)
          print("Collision detected")
          player.state.current = "invulnerable"
          player.state.cooldown = 2
+         player.health = player.health - 1
       end
       collisions[i] = nil
    end
@@ -154,7 +155,8 @@ function love.load()
       size = { width = 35, height = 40 },
       color = { r = 255, g = 255, b = 0, a = 255 },
       speed = 100,
-      state = { current = "normal", cooldown = 0 }
+      state = { current = "normal", cooldown = 0 },
+      health = 10
    }
    Entity:add(player)
    Entity:add(newEnemy(500, 300, 60))
@@ -183,5 +185,6 @@ function love.draw()
       drawEntity(entity)
    end
    love.graphics.setColor(255,255,255)
-   love.graphics.print("Arcade Game", 200, 400)
+   love.graphics.print("Health: " .. Entity.entities[1].health,
+                       love.graphics.getWidth() - 100, 10)
 end
