@@ -5,7 +5,7 @@ function M.mergesort (array, compare)
    local subarrays = {}
 
    for i=1, #array do
-      table.insert (subarrays, {array[i]})
+      subarrays[#subarrays + 1] = {array[i]}
    end
 
    local function go (xs, cmp)
@@ -14,9 +14,9 @@ function M.mergesort (array, compare)
       
       for i=1, #xs, 2 do
          if xs[i+1] then
-            table.insert (temp, merge (xs[i], xs[i+1], cmp))
+            temp[#temp + 1] =  merge (xs[i], xs[i+1], cmp)
          else
-            table.insert (temp, xs[i])
+            temp[#temp + 1] = xs[i]
          end
       end
       return go (temp, cmp)
@@ -32,20 +32,20 @@ function merge (xs, ys, compare)
    while not (i_x > #xs and i_y > #ys) do
 
       if i_x > #xs then
-         for i=i_y, #ys do table.insert (result, ys[i]) end
+         for i=i_y, #ys do result[#result + 1] = ys[i] end
          break
       end
       
       if i_y > #ys then
-         for i=i_x, #xs do table.insert (result, xs[i]) end
+         for i=i_x, #xs do result[#result + 1] = xs[i] end
          break
       end
       
       if compare (xs[i_x], ys[i_y]) then
-         table.insert (result, xs[i_x])
+         result[#result + 1] = xs[i_x]
          i_x = i_x + 1
       else
-         table.insert (result, ys[i_y])
+         result[#result + 1] = ys[i_y]
          i_y = i_y + 1
       end
    end

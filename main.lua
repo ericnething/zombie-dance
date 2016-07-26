@@ -2,6 +2,7 @@ local System = require "lib.knife.system"
 local Vec = require "vector"
 local Sort = require "mergesort"
 local camera = require "camera"
+local sti = require "lib.sti"
 
 local Entity = {
    eid = 1,
@@ -88,10 +89,11 @@ local updatePosition = System(
 local drawEntity = System(
    { "position", "size", "color", "sprites" },
    function (p, s, c, sp)
+      local x, y = p.x - s.width/2, p.y - s.height
       love.graphics.setColor(c.r, c.g, c.b, c.a)
-      love.graphics.rectangle("fill", p.x, p.y, s.width, s.height)
+      love.graphics.rectangle("fill", x, y, s.width, s.height)
       love.graphics.setColor(255, 255, 255, 255)
-      love.graphics.draw(sp[1], p.x, p.y, nil, s.width / sp[1]:getWidth() )
+      love.graphics.draw(sp[1], x, y, nil, s.width / sp[1]:getWidth() )
    end
 )
 
@@ -152,6 +154,7 @@ local updateState = System(
 local checkCollisions = System(
    { "position", "size", "!player" },
    function (p, s, target)
+      local x, y = p.x - s.width/2, p.y - s.height
       local leftOf  = p.x + s.width < target.position.x
       local rightOf = p.x > target.position.x + target.size.width
       local above   = p.y + s.height < target.position.y
@@ -219,7 +222,7 @@ function love.load()
    
    player = {
       player = true,
-      position = { x = 20, y = 30 },
+      position = { x = 200, y = 300 },
       velocity = { x = 150, y = 150 },
       size = { width = 35, height = 40 },
       color = { r = 255, g = 255, b = 0, a = 255 },
@@ -234,12 +237,17 @@ function love.load()
    Entity:add(newEnemy(200, 100, 50))
    Entity:add(newEnemy(600, 200, 40))
    Entity:add(newEnemy(300, 140, 40))
+
+   map = sti("maps/test.lua")
 end
 
 function love.update(dt)
    if love.keyboard.isDown("escape") then
       love.event.quit()
    end
+
+   map:update(dt)
+   
    for _, entity in pairs(Entity.entities) do
       updateState (entity, player.position, player.state)
       updateEffects (entity, player.position, player.effects)
@@ -259,6 +267,8 @@ end
 
 function love.draw()
    camera:set()
+
+   map:draw()
    
    local drawOrder = getDrawOrder(Entity.entities)
    for _, i in ipairs(drawOrder) do
@@ -267,6 +277,11 @@ function love.draw()
    love.graphics.print("Zombies can dance, too!", 200, 400)
    
    camera:unset()
+
+   love.graphics.setColor(0,0,255,180)
+   love.graphics.rectangle("fill",
+                           love.graphics.getWidth() - 110, 6,
+                           90, 20)
    
    love.graphics.setColor(255,255,255)
    love.graphics.print("Health: " .. player.health,
@@ -274,6 +289,12 @@ function love.draw()
    if player.effects["playing_music"] then
    love.graphics.print("Playing Music", love.graphics.getWidth() - 100, 30)
    end
+
+   local screen_x, screen_y = map:convertPixelToTile(player.position.x,
+                                                     player.position.y)
+   love.graphics.print(string.format("(%f ,%f)", screen_x, screen_y),
+                       0, love.graphics.getHeight() - 50)
+   
 end
 
 function getDrawOrder(entities)
