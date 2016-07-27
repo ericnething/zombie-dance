@@ -213,6 +213,14 @@ function updateCamera(player)
    end
 end
 
+function highlightTile(entity, color)
+   love.graphics.setColor(unpack(color))
+   love.graphics.rectangle("fill",
+                           math.floor(entity.position.x/64) * 64,
+                           math.floor(entity.position.y/64) * 64,
+                           64, 64)
+end
+
 -- Love API hooks
 
 function love.load()
@@ -266,10 +274,16 @@ function love.update(dt)
 end
 
 function love.draw()
+   local screen_x, screen_y = map:convertPixelToTile(player.position.x,
+                                                     player.position.y)
    camera:set()
 
    map:draw()
-   
+
+   -- Debug player position
+   highlightTile(player, {100, 100, 200, 128})
+
+   -- Sort the entities and draw them
    local drawOrder = getDrawOrder(Entity.entities)
    for _, i in ipairs(drawOrder) do
       drawEntity(Entity.entities[i])
@@ -278,6 +292,7 @@ function love.draw()
    
    camera:unset()
 
+   -- HUD
    love.graphics.setColor(0,0,255,180)
    love.graphics.rectangle("fill",
                            love.graphics.getWidth() - 110, 6,
@@ -286,14 +301,15 @@ function love.draw()
    love.graphics.setColor(255,255,255)
    love.graphics.print("Health: " .. player.health,
                        love.graphics.getWidth() - 100, 10)
+   
    if player.effects["playing_music"] then
    love.graphics.print("Playing Music", love.graphics.getWidth() - 100, 30)
    end
 
-   local screen_x, screen_y = map:convertPixelToTile(player.position.x,
-                                                     player.position.y)
+   -- Debug player position
    love.graphics.print(string.format("(%f ,%f)", screen_x, screen_y),
                        0, love.graphics.getHeight() - 50)
+   
    
 end
 
